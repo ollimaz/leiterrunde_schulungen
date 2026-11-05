@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	  xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+	<id>leiterrunde_schulungen</id>
+	<name>Training</name>
+	<name lang="de">Schulungen</name>
+	<summary>Training records and certificates of conduct for the leader team</summary>
+	<summary lang="de">Schulungsnachweise und Führungszeugnisse für die Leiterrunde</summary>
+	<licence>agpl</licence>
+	<author>Leiterrunde</author>
+	<version>2.0.0</version>
+	<namespace>LeiterrundeSchulungen</namespace>
+	<category>organization</category>
+	<bugs>https://github.com/ollimaz/leiterrunde_schulungen/issues</bugs>
+	<repository>https://github.com/ollimaz/leiterrunde_schulungen</repository>
+	<dependencies>
+		<nextcloud min-version="29" max-version="36"/>
+	</dependencies>
+	<navigations>
+		<navigation>
+			<name>Training</name>
+			<route>leiterrunde_schulungen.page.index</route>
+			<icon>leiterrunde_schulungen.svg</icon>
+		</navigation>
+	</navigations>
+	<background-jobs>
+		<job>OCA\LeiterrundeSchulungen\BackgroundJob\TrainingCheckJob</job>
+	</background-jobs>
+	<repair-steps>
+		<install>
+			<step>OCA\LeiterrundeSchulungen\Migration\SeedTrainingTypes</step>
+			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
+		</install>
+		<post-migration>
+			<step>OCA\LeiterrundeSchulungen\Migration\SeedTrainingTypes</step>
+			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
+		</post-migration>
+	</repair-steps>
+	<settings>
+		<admin>OCA\LeiterrundeSchulungen\Settings\RulesPage</admin>
+	</settings>
+</info>
