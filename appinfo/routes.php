@@ -25,6 +25,8 @@ return [
 		['name' => 'Api\\TrainingRecords#approve', 'url' => '/api/training-records/{id}/approve', 'verb' => 'POST'],
 		['name' => 'Api\\TrainingRecords#reject', 'url' => '/api/training-records/{id}/reject', 'verb' => 'POST'],
 		['name' => 'Api\\TrainingRecords#file', 'url' => '/api/training-records/{id}/file', 'verb' => 'GET'],
+		['name' => 'Api\\TrainingRecords#upload_file', 'url' => '/api/training-records/{id}/file', 'verb' => 'POST'],
+		['name' => 'Api\\TrainingRecords#delete_file', 'url' => '/api/training-records/{id}/file', 'verb' => 'DELETE'],
 		['name' => 'Api\\Fz#index', 'url' => '/api/fz', 'verb' => 'GET'],
 		['name' => 'Api\\Fz#create', 'url' => '/api/fz', 'verb' => 'POST'],
 		['name' => 'Api\\Fz#update', 'url' => '/api/fz/{id}', 'verb' => 'PUT'],

@@ -105,7 +105,15 @@
         "Deleted": "Gelöscht",
         "Edit certificate of conduct": "Führungszeugnis bearbeiten",
         "Edit record": "Nachweis bearbeiten",
-        "The “Leiterrunde” app must be enabled.": "Die App „Leiterrunde“ muss aktiviert sein."
+        "The “Leiterrunde” app must be enabled.": "Die App „Leiterrunde“ muss aktiviert sein.",
+        "No file": "Keine Datei",
+        "Replace file": "Datei ersetzen",
+        "Upload file": "Datei hochladen",
+        "File uploaded": "Datei hochgeladen",
+        "Remove the file from this record?": "Datei von diesem Nachweis entfernen?",
+        "File removed": "Datei entfernt",
+        "Remove file": "Datei entfernen",
+        "No file uploaded": "No file uploaded"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

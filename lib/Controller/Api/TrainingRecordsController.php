@@ -174,11 +174,7 @@ class TrainingRecordsController extends ApiController {
 	): JSONResponse {
 		return $this->wrap(function () use ($id, $type_id, $attended_date, $hours, $title, $notes) {
 			$r = $this->mapper->find($id);
-			$own = $this->perm->currentPerson();
-			$isOwn = $own !== null && $own->getId() === $r->getPersonId() && $r->getCreatedBy() === $this->perm->requireLoggedIn()->getUID();
-			if (!$isOwn || $r->getStatus() !== 'pending') {
-				$this->perm->require('training.records.approve');
-			}
+			$this->assertCanMutate($r);
 			$before = $r->jsonSerialize();
 			if ($type_id !== null) {
 				$this->typeMapper->find($type_id);
@@ -210,11 +206,7 @@ class TrainingRecordsController extends ApiController {
 	public function destroy(int $id): JSONResponse {
 		return $this->wrap(function () use ($id) {
 			$r = $this->mapper->find($id);
-			$own = $this->perm->currentPerson();
-			$isOwn = $own !== null && $own->getId() === $r->getPersonId() && $r->getCreatedBy() === $this->perm->requireLoggedIn()->getUID();
-			if (!$isOwn || $r->getStatus() !== 'pending') {
-				$this->perm->require('training.records.approve');
-			}
+			$this->assertCanMutate($r);
 			$this->mapper->delete($r);
 			$this->audit->diff('training_record', $id, null, ['_action' => 'deleted']);
 			return ['ok' => true];
@@ -242,6 +234,66 @@ class TrainingRecordsController extends ApiController {
 		}
 	}
 
+	#[NoAdminRequired]
+	public function uploadFile(int $id): JSONResponse {
+		return $this->wrap(function () use ($id) {
+			$r = $this->mapper->find($id);
+			$this->assertCanMutate($r);
+			$upload = $this->request->getUploadedFile('file');
+			if (!is_array($upload) || empty($upload['tmp_name']) || !is_file($upload['tmp_name'])) {
+				throw new ApiException('No file uploaded', 422);
+			}
+			$user = $this->perm->requireLoggedIn();
+			$stored = $this->files->store('nachweis', $user->getUID(), $upload, $this->docVars($r->getPersonId()));
+			$before = $r->jsonSerialize();
+			$this->removeStoredFile($r);
+			$r->setFileId($stored['file_id']);
+			$r->setFileOwner($stored['file_owner']);
+			$r->setFileName($stored['file_name']);
+			$r = $this->mapper->update($r);
+			$this->audit->diff('training_record', $r->getId(), $before, $r->jsonSerialize());
+			return $r->jsonSerialize();
+		});
+	}
+
+	#[NoAdminRequired]
+	public function deleteFile(int $id): JSONResponse {
+		return $this->wrap(function () use ($id) {
+			$r = $this->mapper->find($id);
+			$this->assertCanMutate($r);
+			if ($r->getFileId() === null || $r->getFileOwner() === null) {
+				throw new ApiException('No file present', 404);
+			}
+			$before = $r->jsonSerialize();
+			$this->removeStoredFile($r);
+			$r->setFileId(null);
+			$r->setFileOwner(null);
+			$r->setFileName(null);
+			$r = $this->mapper->update($r);
+			$this->audit->diff('training_record', $r->getId(), $before, $r->jsonSerialize());
+			return $r->jsonSerialize();
+		});
+	}
+
+	private function assertCanMutate(TrainingRecord $r): void {
+		$own = $this->perm->currentPerson();
+		$isOwn = $own !== null && $own->getId() === $r->getPersonId()
+			&& $r->getCreatedBy() === $this->perm->requireLoggedIn()->getUID();
+		if (!$isOwn || $r->getStatus() !== 'pending') {
+			$this->perm->require('training.records.approve');
+		}
+	}
+
+	private function removeStoredFile(TrainingRecord $r): void {
+		if ($r->getFileId() === null || $r->getFileOwner() === null) {
+			return;
+		}
+		try {
+			$this->files->get($r->getFileOwner(), $r->getFileId())->delete();
+		} catch (\Throwable) {
+		}
+	}
+
 	private function docVars(int $personId): array {
 		$person = null;
 		try { $person = $this->personMapper->find($personId); } catch (\Throwable) {}
@@ -249,7 +301,7 @@ class TrainingRecordsController extends ApiController {
 		return [
 			'jahr' => $now->format('Y'), 'monat' => $now->format('m'), 'datum' => $now->format('Y-m-d'),
 			'vorname' => $person?->getFirstName() ?? '', 'nachname' => $person?->getLastName() ?? '',
-			'id' => (string)$personId, 'typ' => $type?->getName() ?? '',
+			'id' => (string)$personId, 'typ' => '',
 		];
 	}
 

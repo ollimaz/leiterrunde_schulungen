@@ -62,8 +62,8 @@ async function viewNachweise(v, ME, { api, coreApi }) {
 				h('td', {}, badge(r.status)),
 				h('td', {}, r.file_id ? h('a', { href: OC.generateUrl('/apps/' + APP + '/api/training-records/' + r.id + '/file'), target: '_blank' }, r.file_name || _t('File')) : '–'),
 				showActions ? h('td', { class: 'lr-actions' },
-					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn', onclick: async () => { await api('/training-records/' + r.id + '/approve', { method: 'POST', json: {} }); toast(_t('Approved'), false); } }, _t('Approve')) : null,
-					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn quiet', onclick: async () => { await api('/training-records/' + r.id + '/reject', { method: 'POST', json: {} }); toast(_t('Rejected'), false); } }, _t('Reject')) : null,
+					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn', onclick: async () => { try { await api('/training-records/' + r.id + '/approve', { method: 'POST', json: {} }); toast(_t('Approved'), false); viewNachweise(v, ME, { api, coreApi }); } catch (e) { toast(e.message); } } }, _t('Approve')) : null,
+					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn quiet', onclick: async () => { try { await api('/training-records/' + r.id + '/reject', { method: 'POST', json: {} }); toast(_t('Rejected'), false); viewNachweise(v, ME, { api, coreApi }); } catch (e) { toast(e.message); } } }, _t('Reject')) : null,
 					canMutate(r) ? h('button', { class: 'lr-btn secondary', onclick: () => recordForm(v, ME, { api, coreApi }, r) }, _t('Edit')) : null,
 					canMutate(r) ? h('button', { class: 'lr-btn quiet', onclick: async () => {
 						if (!confirm(_t('Delete this record?'))) return;
@@ -91,10 +91,28 @@ function recordForm(v, ME, { api, coreApi }, r) {
 	const hours = h('input', { type: 'number', step: '0.5', min: 0, value: r.hours });
 	const titleI = h('input', { value: r.title || '' });
 	const notes = h('input', { value: r.notes || '' });
+	const fileRow = h('div', { class: 'lr-actions' },
+		r.file_id ? h('a', { href: OC.generateUrl('/apps/' + APP + '/api/training-records/' + r.id + '/file'), target: '_blank' }, r.file_name || _t('File')) : h('span', { class: 'lr-muted' }, _t('No file')));
+	const fileInput = h('input', { type: 'file', style: 'display:none' });
+	const uploadBtn = h('button', { class: 'lr-btn secondary', onclick: () => fileInput.click() }, r.file_id ? _t('Replace file') : _t('Upload file'));
+	fileInput.addEventListener('change', async () => {
+		if (!fileInput.files[0]) return;
+		const fd = new FormData();
+		fd.append('file', fileInput.files[0]);
+		try { const u = await api('/training-records/' + r.id + '/file', { method: 'POST', body: fd }); toast(_t('File uploaded'), false); recordForm(v, ME, { api, coreApi }, u); }
+		catch (e) { toast(e.message); }
+	});
+	fileRow.append(fileInput, uploadBtn);
+	if (r.file_id) fileRow.append(h('button', { class: 'lr-btn quiet', onclick: async () => {
+		if (!confirm(_t('Remove the file from this record?'))) return;
+		try { const u = await api('/training-records/' + r.id + '/file', { method: 'DELETE' }); toast(_t('File removed'), false); recordForm(v, ME, { api, coreApi }, u); }
+		catch (e) { toast(e.message); }
+	} }, _t('Remove file')));
 	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Edit record') }),
 		h('div', { class: 'lr-form lr-formgrid' },
 			field(_t('Training type'), typeSel, 4), field(_t('Date'), date, 3),
 			field(_t('Hours'), hours, 2), field(_t('Title'), titleI, 6), field(_t('Notes'), notes, 12),
+			field(_t('File (record)'), fileRow, 12),
 			formActions(
 				h('button', { class: 'lr-btn', onclick: async () => {
 					try { await api('/training-records/' + r.id, { method: 'PUT', json: { type_id: +typeSel.value, attended_date: date.value, hours: +hours.value || 0, title: titleI.value || null, notes: notes.value || null } }); toast(_t('Saved'), false); viewNachweise(v, ME, { api, coreApi }); }
@@ -231,7 +249,7 @@ async function viewMein(v, ME, { api }) {
 				fd.append('attended_date', date.value); fd.append('hours', hours.value || 0);
 				fd.append('title', titleI.value);
 				if (file.files[0]) fd.append('file', file.files[0]);
-				try { await api('/training-records', { method: 'POST', body: fd }); toast(_t('Record submitted'), false); }
+				try { await api('/training-records', { method: 'POST', body: fd }); toast(_t('Record submitted'), false); viewMein(v, ME, { api }); }
 				catch (e) { toast(e.message); }
 			} }, _t('Submit')))));
 }
