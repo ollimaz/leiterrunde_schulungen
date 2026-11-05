@@ -276,12 +276,7 @@ class TrainingRecordsController extends ApiController {
 	}
 
 	private function assertCanMutate(TrainingRecord $r): void {
-		$own = $this->perm->currentPerson();
-		$isOwn = $own !== null && $own->getId() === $r->getPersonId()
-			&& $r->getCreatedBy() === $this->perm->requireLoggedIn()->getUID();
-		if (!$isOwn || $r->getStatus() !== 'pending') {
-			$this->perm->require('training.records.approve');
-		}
+		$this->perm->assertRecordMutation($r->getPersonId(), $r->getCreatedBy(), $r->getStatus(), 'training.records.approve');
 	}
 
 	private function removeStoredFile(TrainingRecord $r): void {
@@ -295,24 +290,10 @@ class TrainingRecordsController extends ApiController {
 	}
 
 	private function docVars(int $personId): array {
-		$person = null;
-		try { $person = $this->personMapper->find($personId); } catch (\Throwable) {}
-		$now = new \DateTimeImmutable();
-		return [
-			'jahr' => $now->format('Y'), 'monat' => $now->format('m'), 'datum' => $now->format('Y-m-d'),
-			'vorname' => $person?->getFirstName() ?? '', 'nachname' => $person?->getLastName() ?? '',
-			'id' => (string)$personId, 'typ' => '',
-		];
+		return $this->files->personVars($this->personMapper, $personId) + ['typ' => ''];
 	}
 
 	private function assertCanView(TrainingRecord $r): void {
-		if ($this->perm->has('training.records.readAll')) {
-			return;
-		}
-		$own = $this->perm->currentPerson();
-		if ($own !== null && $own->getId() === $r->getPersonId()) {
-			return;
-		}
-		throw new \OCA\Leiterrunde\Exception\ForbiddenException();
+		$this->perm->assertRecordView($r->getPersonId(), 'training.records.readAll');
 	}
 }
