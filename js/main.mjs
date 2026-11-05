@@ -42,6 +42,10 @@ async function viewNachweise(v, ME, { api, coreApi }) {
 	const persons = await coreApi('/persons/options').catch(() => []);
 	const name = id => { const p = persons.find(x => x.id === id); return p ? p.last_name + ', ' + p.first_name : '#' + id; };
 	const canApprove = ME.caps['training.records.approve'];
+	const isOwn = r => ME.person && r.person_id === ME.person.id && r.created_by === ME.uid;
+	const canMutate = r => canApprove || (isOwn(r) && r.status === 'pending');
+	const anyMutate = records.some(canMutate);
+	const showActions = canApprove || anyMutate;
 	const filter = h('select', {}, h('option', { value: '' }, _t('All')), h('option', { value: 'pending' }, _t('To review')));
 	const tbody = h('tbody', {});
 	const empty = emptyState(_t('No training records.'));
@@ -57,9 +61,15 @@ async function viewNachweise(v, ME, { api, coreApi }) {
 				h('td', {}, formatDate(r.attended_date)), h('td', {}, r.hours), h('td', {}, r.title || ''),
 				h('td', {}, badge(r.status)),
 				h('td', {}, r.file_id ? h('a', { href: OC.generateUrl('/apps/' + APP + '/api/training-records/' + r.id + '/file'), target: '_blank' }, r.file_name || _t('File')) : '–'),
-				canApprove ? h('td', { class: 'lr-actions' },
-					r.status === 'pending' ? h('button', { class: 'lr-btn', onclick: async () => { await api('/training-records/' + r.id + '/approve', { method: 'POST', json: {} }); toast(_t('Approved'), false); } }, _t('Approve')) : null,
-					r.status === 'pending' ? h('button', { class: 'lr-btn quiet', onclick: async () => { await api('/training-records/' + r.id + '/reject', { method: 'POST', json: {} }); toast(_t('Rejected'), false); } }, _t('Reject')) : null) : null));
+				showActions ? h('td', { class: 'lr-actions' },
+					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn', onclick: async () => { await api('/training-records/' + r.id + '/approve', { method: 'POST', json: {} }); toast(_t('Approved'), false); } }, _t('Approve')) : null,
+					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn quiet', onclick: async () => { await api('/training-records/' + r.id + '/reject', { method: 'POST', json: {} }); toast(_t('Rejected'), false); } }, _t('Reject')) : null,
+					canMutate(r) ? h('button', { class: 'lr-btn secondary', onclick: () => recordForm(v, ME, { api, coreApi }, r) }, _t('Edit')) : null,
+					canMutate(r) ? h('button', { class: 'lr-btn quiet', onclick: async () => {
+						if (!confirm(_t('Delete this record?'))) return;
+						try { await api('/training-records/' + r.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewNachweise(v, ME, { api, coreApi }); }
+						catch (e) { toast(e.message); }
+					} }, _t('Delete')) : null) : null));
 		}
 	};
 	filter.addEventListener('change', render);
@@ -70,9 +80,27 @@ async function viewNachweise(v, ME, { api, coreApi }) {
 		h('table', { class: 'lr-table' },
 			h('thead', {}, h('tr', {},
 				h('th', {}, _t('Person')), h('th', {}, _t('Type')), h('th', {}, _t('Date')), h('th', {}, _t('hrs')),
-				h('th', {}, _t('Title')), h('th', {}, _t('Status')), h('th', {}, _t('File')), canApprove ? h('th', {}, _t('Action')) : null)),
+				h('th', {}, _t('Title')), h('th', {}, _t('Status')), h('th', {}, _t('File')), showActions ? h('th', {}, _t('Action')) : null)),
 			tbody),
 		empty);
+}
+
+function recordForm(v, ME, { api, coreApi }, r) {
+	const typeSel = h('select', {}, ...TYPES.map(t => h('option', { value: t.id, selected: t.id === r.type_id }, t.name)));
+	const date = h('input', { type: 'date', value: r.attended_date });
+	const hours = h('input', { type: 'number', step: '0.5', min: 0, value: r.hours });
+	const titleI = h('input', { value: r.title || '' });
+	const notes = h('input', { value: r.notes || '' });
+	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Edit record') }),
+		h('div', { class: 'lr-form lr-formgrid' },
+			field(_t('Training type'), typeSel, 4), field(_t('Date'), date, 3),
+			field(_t('Hours'), hours, 2), field(_t('Title'), titleI, 6), field(_t('Notes'), notes, 12),
+			formActions(
+				h('button', { class: 'lr-btn', onclick: async () => {
+					try { await api('/training-records/' + r.id, { method: 'PUT', json: { type_id: +typeSel.value, attended_date: date.value, hours: +hours.value || 0, title: titleI.value || null, notes: notes.value || null } }); toast(_t('Saved'), false); viewNachweise(v, ME, { api, coreApi }); }
+					catch (e) { toast(e.message); }
+				} }, _t('Save')),
+				h('button', { class: 'lr-btn secondary', onclick: () => viewNachweise(v, ME, { api, coreApi }) }, _t('Cancel')))));
 }
 
 async function viewTypen(v, ME, { api }) {
@@ -115,7 +143,12 @@ async function viewTypen(v, ME, { api }) {
 				h('td', {}, t.validity_months === 0 ? _t('unlimited') : _n('%n month', '%n months', t.validity_months)),
 				h('td', {}, t.counts_hours ? _t('yes') : '–'), h('td', {}, t.required ? _t('yes') : '–'),
 				h('td', {}, t.required_for_event ? _t('yes') : '–'), h('td', {}, t.active ? _t('Active') : _t('Inactive')),
-				h('td', {}, canWrite ? h('button', { class: 'lr-btn secondary', onclick: () => typeForm(t) }, _t('Edit')) : null))))));
+				h('td', { class: 'lr-actions' }, canWrite ? h('button', { class: 'lr-btn secondary', onclick: () => typeForm(t) }, _t('Edit')) : null,
+					canWrite ? h('button', { class: 'lr-btn quiet', onclick: async () => {
+						if (!confirm(_t('Delete type "{name}"?', { name: t.name }))) return;
+						try { await api('/training-types/' + t.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewTypen(v, ME, { api }); }
+						catch (e) { toast(e.message); }
+					} }, _t('Delete')) : null))))));
 }
 
 async function viewFz(v, ME, { api, coreApi }) {
@@ -138,10 +171,33 @@ async function viewFz(v, ME, { api, coreApi }) {
 			field(_t('Person'), pidEl, 6), field(_t('Issued on'), issued, 3), field(_t('Validity'), valid, 3),
 			formActions(add)) : null,
 		h('table', { class: 'lr-table' },
-			h('thead', {}, h('tr', {}, h('th', {}, _t('Person')), h('th', {}, _t('Issued')), h('th', {}, _t('Validity')), h('th', {}, _t('Notes')))),
+			h('thead', {}, h('tr', {}, h('th', {}, _t('Person')), h('th', {}, _t('Issued')), h('th', {}, _t('Validity')), h('th', {}, _t('Notes')), canWrite ? h('th', {}, '') : null)),
 			h('tbody', {}, ...rows.map(r => h('tr', {},
 				h('td', {}, name(r.person_id)), h('td', {}, formatDate(r.issued_at)),
-				h('td', {}, _n('%n month', '%n months', r.valid_months)), h('td', {}, r.notes || ''))))));
+				h('td', {}, _n('%n month', '%n months', r.valid_months)), h('td', {}, r.notes || ''),
+				canWrite ? h('td', { class: 'lr-actions' },
+					h('button', { class: 'lr-btn secondary', onclick: () => fzForm(v, ME, { api, coreApi }, r) }, _t('Edit')),
+					h('button', { class: 'lr-btn quiet', onclick: async () => {
+						if (!confirm(_t('Delete certificate for {name}?', { name: name(r.person_id) }))) return;
+						try { await api('/fz/' + r.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewFz(v, ME, { api, coreApi }); }
+						catch (e) { toast(e.message); }
+					} }, _t('Delete'))) : null)))));
+}
+
+function fzForm(v, ME, { api, coreApi }, r) {
+	const issued = h('input', { type: 'date', max: new Date().toISOString().slice(0, 10), value: r.issued_at });
+	const valid = h('select', {}, ...[36, 60].map(n => h('option', { value: n, selected: r.valid_months === n }, _n('%n month', '%n months', n))));
+	const notes = h('input', { value: r.notes || '' });
+	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Edit certificate of conduct') }),
+		h('div', { class: 'lr-form lr-formgrid' },
+			field(_t('Issued on'), issued, 3), field(_t('Validity'), valid, 3), field(_t('Notes'), notes, 6),
+			formActions(
+				h('button', { class: 'lr-btn', onclick: async () => {
+					if (!issued.value) { toast(_t('Please enter the issue date')); return; }
+					try { await api('/fz/' + r.id, { method: 'PUT', json: { issued_at: issued.value, valid_months: +valid.value, notes: notes.value || null } }); toast(_t('Saved'), false); viewFz(v, ME, { api, coreApi }); }
+					catch (e) { toast(e.message); }
+				} }, _t('Save')),
+				h('button', { class: 'lr-btn secondary', onclick: () => viewFz(v, ME, { api, coreApi }) }, _t('Cancel')))));
 }
 
 async function viewMein(v, ME, { api }) {

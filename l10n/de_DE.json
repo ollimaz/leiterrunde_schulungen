@@ -97,7 +97,15 @@
         "No training records.": "Keine Nachweise.",
         "No people found.": "Keine Personen gefunden.",
         "Record submitted": "Nachweis eingereicht",
-        "Hours balance ({hours}/{required} h)": "Stundenkonto ({hours}/{required} h)"
+        "Hours balance ({hours}/{required} h)": "Stundenkonto ({hours}/{required} h)",
+        "Delete": "Löschen",
+        "Delete certificate for {name}?": "Zeugnis für {name} löschen?",
+        "Delete this record?": "Diesen Nachweis löschen?",
+        "Delete type \"{name}\"?": "Art „{name}“ löschen?",
+        "Deleted": "Gelöscht",
+        "Edit certificate of conduct": "Führungszeugnis bearbeiten",
+        "Edit record": "Nachweis bearbeiten",
+        "The “Leiterrunde” app must be enabled.": "Die App „Leiterrunde“ muss aktiviert sein."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

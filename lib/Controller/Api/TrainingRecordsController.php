@@ -164,6 +164,49 @@ class TrainingRecordsController extends ApiController {
 	}
 
 	#[NoAdminRequired]
+	public function update(
+		int $id,
+		?int $type_id = null,
+		?string $attended_date = null,
+		?float $hours = null,
+		?string $title = null,
+		?string $notes = null,
+	): JSONResponse {
+		return $this->wrap(function () use ($id, $type_id, $attended_date, $hours, $title, $notes) {
+			$r = $this->mapper->find($id);
+			$own = $this->perm->currentPerson();
+			$isOwn = $own !== null && $own->getId() === $r->getPersonId() && $r->getCreatedBy() === $this->perm->requireLoggedIn()->getUID();
+			if (!$isOwn || $r->getStatus() !== 'pending') {
+				$this->perm->require('training.records.approve');
+			}
+			$before = $r->jsonSerialize();
+			if ($type_id !== null) {
+				$this->typeMapper->find($type_id);
+				$r->setTypeId($type_id);
+			}
+			if ($attended_date !== null) {
+				$d = \DateTimeImmutable::createFromFormat('!Y-m-d', $attended_date);
+				if ($d === false) {
+					throw new ApiException('Invalid date (YYYY-MM-DD)', 422);
+				}
+				$r->setAttendedDate($d->format('Y-m-d'));
+			}
+			if ($hours !== null) {
+				$r->setHours(number_format((float)$hours, 2, '.', ''));
+			}
+			if ($title !== null) {
+				$r->setTitle($title);
+			}
+			if ($notes !== null) {
+				$r->setNotes($notes);
+			}
+			$r = $this->mapper->update($r);
+			$this->audit->diff('training_record', $r->getId(), $before, $r->jsonSerialize());
+			return $r->jsonSerialize();
+		});
+	}
+
+	#[NoAdminRequired]
 	public function destroy(int $id): JSONResponse {
 		return $this->wrap(function () use ($id) {
 			$r = $this->mapper->find($id);

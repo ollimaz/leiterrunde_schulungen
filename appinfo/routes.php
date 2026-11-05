@@ -20,6 +20,7 @@ return [
 		['name' => 'Api\\TrainingRecords#index', 'url' => '/api/training-records', 'verb' => 'GET'],
 		['name' => 'Api\\TrainingRecords#create', 'url' => '/api/training-records', 'verb' => 'POST'],
 		['name' => 'Api\\TrainingRecords#show', 'url' => '/api/training-records/{id}', 'verb' => 'GET'],
+		['name' => 'Api\\TrainingRecords#update', 'url' => '/api/training-records/{id}', 'verb' => 'PUT'],
 		['name' => 'Api\\TrainingRecords#destroy', 'url' => '/api/training-records/{id}', 'verb' => 'DELETE'],
 		['name' => 'Api\\TrainingRecords#approve', 'url' => '/api/training-records/{id}/approve', 'verb' => 'POST'],
 		['name' => 'Api\\TrainingRecords#reject', 'url' => '/api/training-records/{id}/reject', 'verb' => 'POST'],

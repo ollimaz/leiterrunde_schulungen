@@ -28,11 +28,9 @@
 	</background-jobs>
 	<repair-steps>
 		<install>
-			<step>OCA\LeiterrundeSchulungen\Migration\SeedTrainingTypes</step>
 			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
 		</install>
 		<post-migration>
-			<step>OCA\LeiterrundeSchulungen\Migration\SeedTrainingTypes</step>
 			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
 		</post-migration>
 	</repair-steps>
