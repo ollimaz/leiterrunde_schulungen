@@ -11,9 +11,9 @@
 	<summary>Training records and certificates of conduct for the leader team</summary>
 	<summary lang="de">Schulungsnachweise und Führungszeugnisse für die Leiterrunde</summary>
 	<description><![CDATA[Training module of the Leiterrunde suite – requires the Leiterrunde app. Manage training records with certificate files, certificates of conduct (Führungszeugnisse) and training types with validity rules.]]></description>
+	<version>0.0.2</version>
 	<licence>agpl</licence>
 	<author>Leiterrunde</author>
-	<version>0.0.2</version>
 	<namespace>LeiterrundeSchulungen</namespace>
 	<category>organization</category>
 	<bugs>https://github.com/ollimaz/leiterrunde_schulungen/issues</bugs>
@@ -21,6 +21,20 @@
 	<dependencies>
 		<nextcloud min-version="29" max-version="36"/>
 	</dependencies>
+	<background-jobs>
+		<job>OCA\LeiterrundeSchulungen\BackgroundJob\TrainingCheckJob</job>
+	</background-jobs>
+	<repair-steps>
+		<post-migration>
+			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
+		</post-migration>
+		<install>
+			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
+		</install>
+	</repair-steps>
+	<settings>
+		<admin>OCA\LeiterrundeSchulungen\Settings\RulesPage</admin>
+	</settings>
 	<navigations>
 		<navigation>
 			<name>Training</name>
@@ -28,18 +42,4 @@
 			<icon>leiterrunde_schulungen.svg</icon>
 		</navigation>
 	</navigations>
-	<background-jobs>
-		<job>OCA\LeiterrundeSchulungen\BackgroundJob\TrainingCheckJob</job>
-	</background-jobs>
-	<repair-steps>
-		<install>
-			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
-		</install>
-		<post-migration>
-			<step>OCA\LeiterrundeSchulungen\Migration\MigrateConfig</step>
-		</post-migration>
-	</repair-steps>
-	<settings>
-		<admin>OCA\LeiterrundeSchulungen\Settings\RulesPage</admin>
-	</settings>
 </info>
