@@ -37,7 +37,7 @@ class TrainingController extends ApiController {
 	public function status(): JSONResponse {
 		return $this->wrap(function () {
 			$this->perm->require('training.check');
-			return $this->statusService->statusMatrix(new \DateTimeImmutable('today'));
+			return $this->statusService->statusMatrix(new \DateTimeImmutable('today'), $this->canSeeFzExpiry());
 		});
 	}
 
@@ -53,7 +53,8 @@ class TrainingController extends ApiController {
 			if ($at === false) {
 				throw new ApiException('Invalid date', 400);
 			}
-			return $this->statusService->betreuerCheck($person, $at, $this->perm->has('fz.read'));
+			$check = $this->statusService->betreuerCheck($person, $at, $this->canSeeFzExpiry());
+			return $this->filterFz($check);
 		});
 	}
 
@@ -69,8 +70,25 @@ class TrainingController extends ApiController {
 			$today = new \DateTimeImmutable('today');
 			$status = $this->statusService->personStatus($person, $today);
 			$fz = $this->statusService->fzStatus($person, $today);
-			$status['fz'] = $this->perm->has('fz.read') ? $fz : ['state' => $fz['state']];
-			return $status;
+			$status['fz'] = $fz;
+			return $this->filterFz($status);
 		});
+	}
+
+	private function canSeeFzExpiry(): bool {
+		return $this->perm->has('fz.read') || $this->perm->has('fz.expiry.read');
+	}
+
+	/** Full FZ data needs fz.read; fz.expiry.read only reveals state and expiry date. */
+	private function filterFz(array $data): array {
+		if (!isset($data['fz']) || $this->perm->has('fz.read')) {
+			return $data;
+		}
+		$fz = ['state' => $data['fz']['state']];
+		if ($this->perm->has('fz.expiry.read')) {
+			$fz['expires'] = $data['fz']['expires'] ?? null;
+		}
+		$data['fz'] = $fz;
+		return $data;
 	}
 }

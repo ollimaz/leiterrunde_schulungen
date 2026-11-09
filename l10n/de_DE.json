@@ -61,6 +61,7 @@
         "Supervisor check": "Betreuer-Check",
         "Read certificates of conduct": "FZ lesen",
         "Write certificates of conduct": "FZ schreiben",
+        "See certificate of conduct expiry dates": "FZ-Ablaufdatum sehen",
         "Invalid date (YYYY-MM-DD)": "Invalid date (YYYY-MM-DD)",
         "Invalid data": "Invalid data",
         "Validity must be 36 or 60 months": "Validity must be 36 or 60 months",

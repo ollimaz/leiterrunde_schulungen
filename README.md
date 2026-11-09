@@ -11,7 +11,7 @@ leader team.
 
 - **Training types** — configurable training types with validity rules, seeded on install
 - **Training records** — per-person records with file attachments (stored via the core document storage), approval/rejection workflow and status overview
-- **Certificates of conduct (FZ)** — issue and expiry tracking, locked to the `fz` role (`fz.read`/`fz.write` are not editable and invisible even to Nextcloud admins)
+- **Certificates of conduct (FZ)** — issue and expiry tracking, locked to the `fz` role (`fz.read`/`fz.write` are not editable and invisible even to Nextcloud admins). Only the expiry date and status are visible to holders of `fz.expiry.read` (default: `fz`, `vorstand`, `schulung`; editable)
 - **Supervisor check** — `betreuerCheck` shows at a glance whether a person may supervise
 - **Rules** — configurable validity/expiry rules in the admin settings
 - **Reminders** — `TrainingCheckJob` background job notifies about expiring trainings and certificates

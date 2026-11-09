@@ -156,7 +156,7 @@ class TrainingStatusService {
 	 * Statusmatrix für alle Personen in scope_statuses.
 	 * @return array<int, array>
 	 */
-	public function statusMatrix(\DateTimeImmutable $at): array {
+	public function statusMatrix(\DateTimeImmutable $at, bool $fzExpiry = false): array {
 		$persons = $this->personMapper->findByStatuses(array_map('trim', explode(',', $this->settings->get('scope_statuses'))));
 		$out = [];
 		foreach ($persons as $p) {
@@ -171,7 +171,7 @@ class TrainingStatusService {
 				],
 				'types' => $status['types'],
 				'hours' => $status['hours'],
-				'fz' => ['state' => $fz['state']],
+				'fz' => $fzExpiry ? ['state' => $fz['state'], 'expires' => $fz['expires']] : ['state' => $fz['state']],
 				'overall' => $status['overall'],
 			];
 		}

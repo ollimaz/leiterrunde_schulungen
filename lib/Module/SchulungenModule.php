@@ -46,6 +46,7 @@ class SchulungenModule implements IModule, ITrainingCheckProvider {
 			new CapabilityDefinition('training.records.submitOther', $this->l10n->t('Submit records for others'), $this->l10n->t('Training'), ['schulung', 'admin']),
 			new CapabilityDefinition('training.check', $this->l10n->t('Supervisor check'), $this->l10n->t('Training'), ['schulung', 'vorstand', 'admin']),
 			new CapabilityDefinition('fz.read', $this->l10n->t('Read certificates of conduct'), $this->l10n->t('Training'), ['fz'], ['fz']),
+			new CapabilityDefinition('fz.expiry.read', $this->l10n->t('See certificate of conduct expiry dates'), $this->l10n->t('Training'), ['fz', 'vorstand', 'schulung']),
 			new CapabilityDefinition('fz.write', $this->l10n->t('Write certificates of conduct'), $this->l10n->t('Training'), ['fz'], ['fz']),
 		];
 	}
@@ -86,7 +87,7 @@ class SchulungenModule implements IModule, ITrainingCheckProvider {
 		}
 		if ($this->perm->has('training.check', $uid)) {
 			try {
-				$matrix = $this->status->statusMatrix(new \DateTimeImmutable('today'));
+				$matrix = $this->status->statusMatrix(new \DateTimeImmutable('today'), $this->perm->has('fz.read', $uid) || $this->perm->has('fz.expiry.read', $uid));
 				$bad = array_filter($matrix, static fn ($r) => in_array($r['overall'], ['warn', 'fail', 'missing'], true));
 				$seen = [];
 				$bad = array_values(array_filter($bad, static function ($r) use (&$seen) {
