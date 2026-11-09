@@ -47,6 +47,7 @@ class SchulungenModule implements IModule, ITrainingCheckProvider {
 			new CapabilityDefinition('training.check', $this->l10n->t('Supervisor check'), $this->l10n->t('Training'), ['schulung', 'vorstand', 'admin']),
 			new CapabilityDefinition('fz.read', $this->l10n->t('Read certificates of conduct'), $this->l10n->t('Training'), ['fz'], ['fz']),
 			new CapabilityDefinition('fz.write', $this->l10n->t('Write certificates of conduct'), $this->l10n->t('Training'), ['fz'], ['fz']),
+			new CapabilityDefinition('fz.expiry.read', $this->l10n->t('Read certificate of conduct expiry dates'), $this->l10n->t('Training'), ['fz', 'vorstand', 'schulung']),
 		];
 	}
 

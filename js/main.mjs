@@ -31,7 +31,7 @@ async function viewUebersicht(v, ME, ctx) {
 				h('td', {}, h('a', { href: OC.generateUrl('/apps/leiterrunde/') + '#/adressen/' + row.person.id }, row.person.last_name + ', ' + row.person.first_name)),
 				...row.types.map(t => h('td', { title: t.expires ? formatDate(t.expires) : '' }, badge(t.state))),
 				h('td', { title: row.hours.hours + '/' + row.hours.required + ' h' }, badge(row.hours.state)),
-				h('td', {}, badge(row.fz.state)),
+				h('td', {}, badge(row.fz.state), row.fz.expires ? h('div', { class: 'lr-muted' }, formatDate(row.fz.expires)) : null),
 				h('td', {}, badge(row.overall)))))))
 			: emptyState(_t('No people found.')));
 }
@@ -237,7 +237,7 @@ async function viewMein(v, ME, { api }) {
 			h('tbody', {},
 				...st.types.map(t => h('tr', {}, h('td', {}, t.name), h('td', {}, badge(t.state)), h('td', {}, t.expires ? formatDate(t.expires) : '–'))),
 				h('tr', {}, h('td', {}, _t('Hours balance ({hours}/{required} h)', { hours: st.hours.hours, required: st.hours.required })), h('td', {}, badge(st.hours.state)), h('td', {}, '–')),
-				h('tr', {}, h('td', {}, _t('Certificate of conduct')), h('td', {}, badge(st.fz.state)), h('td', {}, '–')))),
+				h('tr', {}, h('td', {}, _t('Certificate of conduct')), h('td', {}, badge(st.fz.state)), h('td', {}, st.fz.expires ? formatDate(st.fz.expires) : '–')))),
 		h('h2', { class: 'lr-section' }, _t('Submit record')),
 		h('div', { class: 'lr-form lr-formgrid' },
 			field(_t('Training type'), typeSel, 4), field(_t('Date'), date, 3),

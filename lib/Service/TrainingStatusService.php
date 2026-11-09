@@ -154,14 +154,19 @@ class TrainingStatusService {
 
 	/**
 	 * Statusmatrix für alle Personen in scope_statuses.
+	 * @param bool $fzExpiry ob das FZ-Ablaufdatum mit ausgegeben werden darf
 	 * @return array<int, array>
 	 */
-	public function statusMatrix(\DateTimeImmutable $at): array {
+	public function statusMatrix(\DateTimeImmutable $at, bool $fzExpiry = false): array {
 		$persons = $this->personMapper->findByStatuses(array_map('trim', explode(',', $this->settings->get('scope_statuses'))));
 		$out = [];
 		foreach ($persons as $p) {
 			$status = $this->personStatus($p, $at);
 			$fz = $this->fzStatus($p, $at);
+			$fzOut = ['state' => $fz['state']];
+			if ($fzExpiry) {
+				$fzOut['expires'] = $fz['expires'];
+			}
 			$out[] = [
 				'person' => [
 					'id' => $p->getId(),
@@ -171,7 +176,7 @@ class TrainingStatusService {
 				],
 				'types' => $status['types'],
 				'hours' => $status['hours'],
-				'fz' => ['state' => $fz['state']],
+				'fz' => $fzOut,
 				'overall' => $status['overall'],
 			];
 		}

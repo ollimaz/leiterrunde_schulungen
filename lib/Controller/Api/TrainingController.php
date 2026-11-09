@@ -37,7 +37,8 @@ class TrainingController extends ApiController {
 	public function status(): JSONResponse {
 		return $this->wrap(function () {
 			$this->perm->require('training.check');
-			return $this->statusService->statusMatrix(new \DateTimeImmutable('today'));
+			$fzExpiry = $this->perm->has('fz.read') || $this->perm->has('fz.expiry.read');
+			return $this->statusService->statusMatrix(new \DateTimeImmutable('today'), $fzExpiry);
 		});
 	}
 
@@ -69,7 +70,10 @@ class TrainingController extends ApiController {
 			$today = new \DateTimeImmutable('today');
 			$status = $this->statusService->personStatus($person, $today);
 			$fz = $this->statusService->fzStatus($person, $today);
-			$status['fz'] = $this->perm->has('fz.read') ? $fz : ['state' => $fz['state']];
+			$status['fz'] = $this->perm->has('fz.read') ? $fz
+				: ($this->perm->has('fz.expiry.read')
+					? ['state' => $fz['state'], 'expires' => $fz['expires']]
+					: ['state' => $fz['state']]);
 			return $status;
 		});
 	}
