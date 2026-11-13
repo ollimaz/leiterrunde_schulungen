@@ -11,7 +11,7 @@
 	<summary>Training records and certificates of conduct for the leader team</summary>
 	<summary lang="de">Schulungsnachweise und Führungszeugnisse für die Leiterrunde</summary>
 	<description><![CDATA[Training module of the Leiterrunde suite – requires the Leiterrunde app. Manage training records with certificate files, certificates of conduct (Führungszeugnisse) and training types with validity rules.]]></description>
-	<version>0.0.2</version>
+	<version>0.0.3</version>
 	<licence>agpl</licence>
 	<author>Leiterrunde</author>
 	<namespace>LeiterrundeSchulungen</namespace>
