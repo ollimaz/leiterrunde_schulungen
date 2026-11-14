@@ -41,8 +41,28 @@ class TrainingRecordsController extends ApiController {
 		private NotificationService $notifications,
 		private SettingsService $settings,
 		private \OCA\Leiterrunde\Db\PersonMapper $personMapper,
+		private \OCA\LeiterrundeSchulungen\Service\TrainingSessionService $sessions,
 	) {
 		parent::__construct(Application::APP_ID, $request, $logger);
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function sessions(): JSONResponse {
+		return $this->wrap(fn () => $this->sessions->index());
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function session(int $id): JSONResponse {
+		return $this->wrap(fn () => $this->sessions->show($id));
+	}
+
+	#[NoAdminRequired]
+	public function createSession(int $type_id, string $attended_date, float $hours, string $title, array $person_ids, ?string $notes = null): JSONResponse {
+		return $this->wrap(fn () => new JSONResponse(
+			$this->sessions->create($type_id, $attended_date, $hours, $title, $person_ids, $notes), Http::STATUS_CREATED
+		));
 	}
 
 	#[NoAdminRequired]
@@ -175,6 +195,7 @@ class TrainingRecordsController extends ApiController {
 		return $this->wrap(function () use ($id, $type_id, $attended_date, $hours, $title, $notes) {
 			$r = $this->mapper->find($id);
 			$this->assertCanMutate($r);
+			\OCA\LeiterrundeSchulungen\Service\TrainingSessionService::assertRecordFields($r, $type_id, $attended_date, $hours, $title);
 			$before = $r->jsonSerialize();
 			if ($type_id !== null) {
 				$this->typeMapper->find($type_id);
@@ -225,7 +246,8 @@ class TrainingRecordsController extends ApiController {
 			$file = $this->files->get($r->getFileOwner(), $r->getFileId());
 			$res = new StreamResponse($file->fopen('rb'));
 			$res->addHeader('Content-Type', $file->getMimeType());
-			$res->addHeader('Content-Disposition', 'inline; filename="' . addslashes($r->getFileName() ?? 'nachweis') . '"');
+			$res->addHeader('Content-Disposition', "attachment; filename*=UTF-8''" . rawurlencode($r->getFileName() ?? 'nachweis'));
+			$res->addHeader('X-Content-Type-Options', 'nosniff');
 			return $res;
 		} catch (\OCA\Leiterrunde\Exception\ApiException $e) {
 			return new JSONResponse(['error' => $e->getMessage()], $e->getStatus());
@@ -276,7 +298,15 @@ class TrainingRecordsController extends ApiController {
 	}
 
 	private function assertCanMutate(TrainingRecord $r): void {
+		if ($r->getStatus() === 'pending' && $this->ownsSessionRecord($r)) {
+			return;
+		}
 		$this->perm->assertRecordMutation($r->getPersonId(), $r->getCreatedBy(), $r->getStatus(), 'training.records.approve');
+	}
+
+	private function ownsSessionRecord(TrainingRecord $r): bool {
+		return $r->getSessionId() !== null && $this->perm->has('training.records.submitOther')
+			&& $r->getCreatedBy() === $this->perm->requireLoggedIn()->getUID();
 	}
 
 	private function removeStoredFile(TrainingRecord $r): void {
@@ -294,6 +324,9 @@ class TrainingRecordsController extends ApiController {
 	}
 
 	private function assertCanView(TrainingRecord $r): void {
+		if ($this->ownsSessionRecord($r)) {
+			return;
+		}
 		$this->perm->assertRecordView($r->getPersonId(), 'training.records.readAll');
 	}
 }

@@ -26,6 +26,28 @@ class TrainingRecordMapper extends QBMapper {
 		return $this->findEntity($qb);
 	}
 
+	public function findForSession(int $sessionId): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')->from($this->getTableName())
+			->where($qb->expr()->eq('session_id', $qb->createNamedParameter($sessionId, IQueryBuilder::PARAM_INT)))
+			->orderBy('id', 'ASC');
+		return $this->findEntities($qb);
+	}
+
+	public function createForSession(TrainingSession $session, int $personId, string $uid): TrainingRecord {
+		$record = new TrainingRecord();
+		$record->setSessionId($session->getId());
+		$record->setPersonId($personId);
+		$record->setTypeId($session->getTypeId());
+		$record->setAttendedDate($session->getAttendedDate());
+		$record->setHours($session->getHours());
+		$record->setTitle($session->getTitle());
+		$record->setStatus('pending');
+		$record->setCreatedBy($uid);
+		$record->setCreatedAt(time());
+		return $this->insert($record);
+	}
+
 	/** @return TrainingRecord[] */
 	public function findFiltered(?int $personId = null, ?int $typeId = null, ?string $status = null, int $limit = 500): array {
 		$qb = $this->db->getQueryBuilder();

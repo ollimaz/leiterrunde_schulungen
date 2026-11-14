@@ -35,3 +35,13 @@ a dependency still gets the full gate.
   and consumes the user's credits — ask the user before running it.** Enforced
   when `scan.plus_requires_approval` is set (then pass `--yes` to confirm).
 <!-- rafter:end -->
+
+## Local development verification
+
+From `/home/oliverm/projects/nextcloud-docker-dev`, run the training unit suite with:
+
+`docker compose exec -T nextcloud phpunit -c /var/www/html/apps-extra/leiterrunde_schulungen/tests/phpunit.xml`
+
+PHP is available in the running `nextcloud` container, not on the host. Regenerate German translations with `docker compose exec -T nextcloud php /var/www/html/apps-extra/leiterrunde/l10n-tools/build.php leiterrunde_schulungen`. Check frontend syntax with `node --check js/main.mjs` from this app directory.
+
+The local app directory is ignored by the enclosing Nextcloud server Git checkout. A Rafter scan that auto-detects `nextcloud/server` scans the remote server, not local app edits; do not treat that as a same-diff security review.

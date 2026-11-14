@@ -61,6 +61,44 @@ class TrainingRulesService {
 	 */
 	public function hoursState(array $records, float $required, int $windowMonths, \DateTimeImmutable $at, int $warnDays): array {
 		$windowStart = $at->modify('-' . $windowMonths . ' months');
+		$records = array_values(array_filter($records, function (array $r) use ($at, $windowStart): bool {
+			$d = $this->parseDate($r['attended_date'] ?? '');
+			return $d !== null && $d > $windowStart && $d <= $at
+				&& is_finite((float)($r['hours'] ?? 0)) && (float)($r['hours'] ?? 0) > 0;
+		}));
+		$expirations = [];
+		foreach ($records as &$record) {
+			$d = $this->parseDate($record['attended_date']);
+			$expiry = $d->modify('+' . $windowMonths . ' months');
+			while ($expiry->modify('-' . $windowMonths . ' months') < $d) {
+				$expiry = $expiry->modify('+1 day');
+			}
+			while ($expiry->modify('-1 day')->modify('-' . $windowMonths . ' months') >= $d) {
+				$expiry = $expiry->modify('-1 day');
+			}
+			$record['expires'] = $expiry->format('Y-m-d');
+			$record['valid_until'] = $expiry->modify('-1 day')->format('Y-m-d');
+			$expirations[$record['expires']] = ($expirations[$record['expires']] ?? 0) + (int)round((float)$record['hours'] * 100);
+		}
+		unset($record);
+		usort($records, static fn (array $a, array $b): int => strcmp($a['expires'], $b['expires']));
+		$remaining = array_sum($expirations);
+		$expires = null;
+		ksort($expirations);
+		if ($remaining >= (int)round($required * 100)) {
+			foreach ($expirations as $date => $hours) {
+				$remaining -= $hours;
+				if ($remaining < (int)round($required * 100)) {
+					$expires = $date;
+					break;
+				}
+			}
+		}
+		$details = [
+			'records' => $records,
+			'expires' => $expires,
+			'valid_until' => $expires === null ? null : (new \DateTimeImmutable($expires))->modify('-1 day')->format('Y-m-d'),
+		];
 		$sum = 0.0;
 		$count = 0;
 		foreach ($records as $r) {
@@ -78,6 +116,7 @@ class TrainingRulesService {
 				'required' => $required,
 				'expiring_hours' => 0.0,
 				'window_months' => $windowMonths,
+				...$details,
 			];
 		}
 		if ($sum < $required) {
@@ -87,6 +126,7 @@ class TrainingRulesService {
 				'required' => $required,
 				'expiring_hours' => 0.0,
 				'window_months' => $windowMonths,
+				...$details,
 			];
 		}
 		// hours still valid at (at + warnDays): attended_date > at + warnDays - window
@@ -106,6 +146,7 @@ class TrainingRulesService {
 			'required' => $required,
 			'expiring_hours' => round($sum - $futureSum, 2),
 			'window_months' => $windowMonths,
+			...$details,
 		];
 	}
 
@@ -152,6 +193,6 @@ class TrainingRulesService {
 			return null;
 		}
 		$dt = \DateTimeImmutable::createFromFormat('!Y-m-d', substr($d, 0, 10));
-		return $dt === false ? null : $dt;
+		return $dt === false || $dt->format('Y-m-d') !== substr($d, 0, 10) ? null : $dt;
 	}
 }

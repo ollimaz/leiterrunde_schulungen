@@ -47,6 +47,7 @@ use OCP\AppFramework\Db\Entity;
  */
 class TrainingRecord extends BaseEntity {
 	protected int $personId = 0;
+	protected ?int $sessionId = null;
 	protected int $typeId = 0;
 	protected string $attendedDate = '';
 	protected string $hours = '0';
@@ -64,6 +65,7 @@ class TrainingRecord extends BaseEntity {
 
 	public function __construct() {
 		$this->addType('personId', 'integer');
+		$this->addType('sessionId', 'integer');
 		$this->addType('typeId', 'integer');
 		$this->addType('fileId', 'integer');
 		$this->addType('decidedAt', 'integer');

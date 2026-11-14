@@ -19,6 +19,10 @@ if (!interface_exists(\OCP\IUser::class)) {
 	eval('namespace OCP\\EventDispatcher; class Event {} interface IEventDispatcher { public function dispatchTyped(object $event): void; }');
 }
 
+if (!interface_exists(\OCP\IDBConnection::class)) {
+	eval('namespace OCP; interface IDBConnection { public function beginTransaction(); public function commit(); public function rollBack(); }');
+}
+
 if (!class_exists(\OCP\AppFramework\Db\QBMapper::class)) {
 	eval('namespace OCP\\AppFramework\\Db; abstract class QBMapper {} abstract class Entity {}');
 }

@@ -1,6 +1,24 @@
 {
     "translations": {
         "To review": "Zu prüfen",
+        "Valid training records": "Gültige Schulungsnachweise",
+        "Group training": "Gruppenschulung",
+        "New group training": "Neue Gruppenschulung",
+        "Create group training": "Gruppenschulung erstellen",
+        "No group training sessions.": "Keine Gruppenschulungen vorhanden.",
+        "Add participant": "Person hinzufügen",
+        "Please select a new participant": "Bitte wähle eine weitere Person aus",
+        "A session can have at most 100 participants": "Eine Schulung kann höchstens 100 Personen umfassen",
+        "Enter a title, date and at least one participant": "Bitte gib einen Titel, ein Datum und mindestens eine Person an",
+        "Each participant gets an individual record and certificate. Certificates can also be uploaded later.": "Jede Person erhält einen eigenen Nachweis mit individuellem Zertifikat. Zertifikate können auch später hochgeladen werden.",
+        "Please select a certificate": "Bitte wähle ein Zertifikat aus",
+        "Session created, but a certificate upload failed. Retry it on the session page.": "Die Schulung wurde erstellt, aber ein Zertifikat konnte nicht hochgeladen werden. Versuche es auf der Schulungsseite erneut.",
+        "Invalid training session data": "Ungültige Schulungsdaten",
+        "Select between 1 and 100 participants": "Wähle zwischen 1 und 100 Personen aus",
+        "Participants must be unique person IDs": "Jede Person darf nur einmal ausgewählt werden",
+        "Training type is inactive": "Die Schulungsart ist inaktiv",
+        "Shared session details cannot be changed on an individual record": "Gemeinsame Schulungsdaten können nicht in einem einzelnen Nachweis geändert werden",
+        "No qualifying training records.": "Keine anrechenbaren Schulungsnachweise.",
         "Approved": "Genehmigt",
         "Training": "Schulungen",
         "Required for events": "Für Veranstaltungen erforderlich",
@@ -98,7 +116,9 @@
         "No training records.": "Keine Nachweise.",
         "No people found.": "Keine Personen gefunden.",
         "Record submitted": "Nachweis eingereicht",
-        "Hours balance ({hours}/{required} h)": "Stundenkonto ({hours}/{required} h)",
+        "Counted training ({hours}/{required} h)": "Anrechenbare Schulungen ({hours}/{required} h)",
+        "Hours drop below {required} h on": "Stunden fallen unter {required} h am",
+        "Training hours": "Schulungsstunden",
         "Delete": "Löschen",
         "Delete certificate for {name}?": "Zeugnis für {name} löschen?",
         "Delete this record?": "Diesen Nachweis löschen?",
@@ -113,7 +133,11 @@
         "Remove the file from this record?": "Datei von diesem Nachweis entfernen?",
         "File removed": "Datei entfernt",
         "Remove file": "Datei entfernen",
-        "No file uploaded": "No file uploaded"
+        "No file uploaded": "No file uploaded",
+        "Back": "Zurück",
+        "Remove": "Entfernen",
+        "File is larger than 20 MB": "Datei ist größer als 20 MB",
+        "Not found": "Nicht gefunden"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

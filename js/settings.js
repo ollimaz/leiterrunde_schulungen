@@ -19,7 +19,7 @@ const t = (s, v) => window.t('leiterrunde_schulungen', s, v, undefined, { escape
 		Object.assign(document.createElement('label'), { textContent: t('Hours account period (months)') }), win);
 	const scope = new Set((s.scope_statuses || '').split(',').map(x => x.trim()));
 	const scopeBoxes = [['aktiv', t('Active')], ['nwl', t('NWL')], ['inaktiv', t('Inactive')], ['ehemalig', t('Former')]].map(([k, l]) => {
-		const c = document.createElement('input'); c.type = 'checkbox'; c.className = 'checkbox'; c.checked = scope.has(k);
+		const c = document.createElement('input'); c.type = 'checkbox'; c.checked = scope.has(k);
 		const la = document.createElement('label'); la.append(c, ' ' + l); la.style.marginRight = '10px';
 		return [k, la, c];
 	});

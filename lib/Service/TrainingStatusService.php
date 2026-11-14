@@ -57,6 +57,11 @@ class TrainingStatusService {
 				'state' => $res['state'],
 				'attended' => $res['attended'],
 				'expires' => $res['expires'],
+				'records' => array_values(array_filter(array_map(function ($r) use ($type, $at, $warnDays) {
+					$record = $this->recordDetails($r);
+					$status = $this->rules->typeState([$record], $type->getValidityMonths(), $at, $warnDays);
+					return $record + ['state' => $status['state'], 'expires' => $status['expires']];
+				}, $byType[$type->getId()] ?? []), static fn (array $r): bool => in_array($r['state'], ['ok', 'warn'], true))),
 			];
 			$states[] = $res['state'];
 		}
@@ -66,6 +71,16 @@ class TrainingStatusService {
 			'types' => $types,
 			'hours' => $hours,
 			'overall' => $this->rules->overall($states),
+		];
+	}
+
+	private function recordDetails(\OCA\LeiterrundeSchulungen\Db\TrainingRecord $record): array {
+		return [
+			'id' => $record->getId(),
+			'type_id' => $record->getTypeId(),
+			'title' => $record->getTitle(),
+			'attended_date' => $record->getAttendedDate(),
+			'hours' => (float)$record->getHours(),
 		];
 	}
 
@@ -80,7 +95,7 @@ class TrainingStatusService {
 		$records = [];
 		foreach ($this->recordMapper->findApprovedForPerson($person->getId()) as $r) {
 			if (in_array($r->getTypeId(), $hourTypeIds, true)) {
-				$records[] = ['attended_date' => $r->getAttendedDate(), 'hours' => (float)$r->getHours()];
+				$records[] = $this->recordDetails($r);
 			}
 		}
 		return $this->rules->hoursState(
@@ -100,6 +115,22 @@ class TrainingStatusService {
 			$latest?->getValidMonths() ?? 36,
 			$at, $warnDays
 		);
+	}
+
+	/**
+	 * FZ-Status mit den für den Betrachter erlaubten Details.
+	 * Eigene Daten und fz.read sehen alles; fz.expiry.read nur Status und Ablaufdatum.
+	 * @return array{state: string, issued?: ?string, expires?: ?string}
+	 */
+	public function fzForViewer(Person $person, \DateTimeImmutable $at, bool $own, bool $fzRead, bool $fzExpiryRead): array {
+		$fz = $this->fzStatus($person, $at);
+		if ($own || $fzRead) {
+			return $fz;
+		}
+		if ($fzExpiryRead) {
+			return ['state' => $fz['state'], 'expires' => $fz['expires']];
+		}
+		return ['state' => $fz['state']];
 	}
 
 	public function betreuerCheckById(int $personId, \DateTimeImmutable $at, bool $fzDetails): array {

@@ -12,10 +12,26 @@ async function loadTypes(api) { TYPES = await api('/training-types'); }
 const NAV = [
 	{ route: '#/uebersicht', label: _t('Overview'), cap: 'training.check', icon: 'dashboard' },
 	{ route: '#/nachweise', label: _t('Training records'), cap: null, icon: 'clipboard' },
+	{ route: '#/gruppen', label: _t('Group training'), cap: 'training.records.submitOther', icon: 'account-group' },
 	{ route: '#/fz', label: _t('Certificates of conduct'), cap: 'fz.read', icon: 'shield-check' },
 	{ route: '#/schulungsarten', label: _t('Training types'), cap: 'training.types.write', icon: 'list' },
 	{ route: '#/mein', label: _t('My training status'), cap: null, icon: 'account' },
 ];
+
+function trainingDetails(status, isHours = false) {
+	const records = status.records || [];
+	return h('details', { class: 'lr-details' },
+		h('summary', {}, isHours
+			? _t('Counted training ({hours}/{required} h)', { hours: status.hours, required: status.required })
+			: _t('Valid training records')),
+		isHours ? h('p', {}, _t('Hours drop below {required} h on', { required: status.required }) + ': ' + (status.valid_until ? formatDate(status.valid_until) : '–')) : null,
+		records.length ? h('table', { class: 'lr-table' },
+			h('thead', {}, h('tr', {}, h('th', {}, _t('Title')), h('th', {}, _t('Date')), h('th', {}, _t('Hours')), h('th', {}, _t('Valid until')))),
+			h('tbody', {}, ...records.map(r => h('tr', {},
+				h('td', {}, r.title || '–'), h('td', {}, formatDate(r.attended_date)),
+				h('td', {}, r.hours), h('td', {}, (isHours ? r.valid_until : r.expires) ? formatDate(isHours ? r.valid_until : r.expires) : _t('unlimited'))))))
+			: h('p', { class: 'lr-muted' }, _t('No qualifying training records.')));
+}
 
 async function viewUebersicht(v, ME, ctx) {
 	if (!ME.caps['training.check']) return viewMein(v, ME, ctx);
@@ -23,14 +39,14 @@ async function viewUebersicht(v, ME, ctx) {
 	const matrix = await api('/training/status');
 	const typeNames = matrix.length ? matrix[0].types.map(t => t.name) : [];
 	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Training status') }),
-		matrix.length ? h('div', { class: 'lr-tablewrap' }, h('table', { class: 'lr-table' },
+		matrix.length ? h('div', { class: 'lr-tablewrap' }, h('table', { class: 'lr-table lr-matrix' },
 			h('thead', {}, h('tr', {},
 				h('th', {}, _t('Person')), ...typeNames.map(n => h('th', {}, n)),
 				h('th', {}, _t('Hours')), h('th', {}, _t('CoC')), h('th', {}, _t('Overall')))),
 			h('tbody', {}, ...matrix.map(row => h('tr', {},
 				h('td', {}, h('a', { href: OC.generateUrl('/apps/leiterrunde/') + '#/adressen/' + row.person.id }, row.person.last_name + ', ' + row.person.first_name)),
-				...row.types.map(t => h('td', { title: t.expires ? formatDate(t.expires) : '' }, badge(t.state))),
-				h('td', { title: row.hours.hours + '/' + row.hours.required + ' h' }, badge(row.hours.state)),
+				...row.types.map(t => h('td', {}, badge(t.state), t.expires ? h('div', { class: 'lr-muted' }, formatDate(t.expires)) : null, trainingDetails(t))),
+				h('td', {}, badge(row.hours.state), trainingDetails(row.hours, true)), 
 				h('td', {}, badge(row.fz.state), row.fz.expires ? h('div', { class: 'lr-muted' }, formatDate(row.fz.expires)) : null),
 				h('td', {}, badge(row.overall)))))))
 			: emptyState(_t('No people found.')));
@@ -43,7 +59,8 @@ async function viewNachweise(v, ME, { api, coreApi }) {
 	const name = id => { const p = persons.find(x => x.id === id); return p ? p.last_name + ', ' + p.first_name : '#' + id; };
 	const canApprove = ME.caps['training.records.approve'];
 	const isOwn = r => ME.person && r.person_id === ME.person.id && r.created_by === ME.uid;
-	const canMutate = r => canApprove || (isOwn(r) && r.status === 'pending');
+	const canMutate = r => canApprove || (r.status === 'pending' && (isOwn(r)
+		|| (r.session_id && r.created_by === ME.uid && ME.caps['training.records.submitOther'])));
 	const anyMutate = records.some(canMutate);
 	const showActions = canApprove || anyMutate;
 	const filter = h('select', {}, h('option', { value: '' }, _t('All')), h('option', { value: 'pending' }, _t('To review')));
@@ -91,6 +108,9 @@ function recordForm(v, ME, { api, coreApi }, r) {
 	const hours = h('input', { type: 'number', step: '0.5', min: 0, value: r.hours });
 	const titleI = h('input', { value: r.title || '' });
 	const notes = h('input', { value: r.notes || '' });
+	if (r.session_id) {
+		for (const input of [typeSel, date, hours, titleI]) input.disabled = true;
+	}
 	const fileRow = h('div', { class: 'lr-actions' },
 		r.file_id ? h('a', { href: OC.generateUrl('/apps/' + APP + '/api/training-records/' + r.id + '/file'), target: '_blank' }, r.file_name || _t('File')) : h('span', { class: 'lr-muted' }, _t('No file')));
 	const fileInput = h('input', { type: 'file', style: 'display:none' });
@@ -119,6 +139,102 @@ function recordForm(v, ME, { api, coreApi }, r) {
 					catch (e) { toast(e.message); }
 				} }, _t('Save')),
 				h('button', { class: 'lr-btn secondary', onclick: () => viewNachweise(v, ME, { api, coreApi }) }, _t('Cancel')))));
+}
+
+async function viewGruppen(v, ME, ctx) {
+	const { api, coreApi } = ctx;
+	if (!ME.caps['training.records.submitOther'] && !ME.caps['training.records.readAll']) return viewMein(v, ME, ctx);
+	await loadTypes(api);
+	const tail = location.hash.split('/').pop();
+	if (tail === 'neu') return sessionForm(v, ME, ctx);
+	if (/^\d+$/.test(tail)) {
+		const session = await api('/training-sessions/' + tail);
+		const persons = await coreApi('/persons/options').catch(() => []);
+		const name = id => { const p = persons.find(x => x.id === id); return p ? p.last_name + ', ' + p.first_name : '#' + id; };
+		const canEdit = r => ME.caps['training.records.approve'] || (r.status === 'pending'
+			&& r.created_by === ME.uid && ME.caps['training.records.submitOther']);
+		put(v, lrPageHeader({ kicker: _t('Group training'), title: session.title,
+			lede: formatDate(session.attended_date) + ' · ' + session.hours + ' h',
+			actions: [h('button', { class: 'lr-btn secondary', onclick: () => location.hash = '#/gruppen' }, _t('Back'))] }),
+			h('p', {}, session.notes || ''),
+			h('table', { class: 'lr-table' },
+				h('thead', {}, h('tr', {}, h('th', {}, _t('Person')), h('th', {}, _t('Status')), h('th', {}, _t('File')), h('th', {}, _t('Action')))),
+				h('tbody', {}, ...session.records.map(r => {
+					const upload = h('input', { type: 'file', accept: '.pdf,.jpg,.jpeg,.png,.heic' });
+					const button = h('button', { class: 'lr-btn secondary', onclick: async () => {
+						if (!upload.files[0]) { toast(_t('Please select a certificate')); return; }
+						button.disabled = true;
+						const fd = new FormData(); fd.append('file', upload.files[0]);
+						try { await api('/training-records/' + r.id + '/file', { method: 'POST', body: fd }); await viewGruppen(v, ME, ctx); }
+						catch (e) { toast(e.message); button.disabled = false; }
+					} }, r.file_id ? _t('Replace file') : _t('Upload file'));
+					return h('tr', {}, h('td', {}, name(r.person_id)), h('td', {}, badge(r.status)),
+						h('td', {}, r.file_id ? h('a', { href: OC.generateUrl('/apps/' + APP + '/api/training-records/' + r.id + '/file'), target: '_blank', rel: 'noopener' }, r.file_name || _t('File')) : _t('No file')),
+						h('td', {}, canEdit(r) ? h('div', {}, upload, button) : null));
+				}))));
+		return;
+	}
+	const sessions = await api('/training-sessions');
+	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Group training'),
+		actions: ME.caps['training.records.submitOther'] ? [h('button', { class: 'lr-btn', onclick: () => location.hash = '#/gruppen/neu' }, _t('New group training'))] : [] }),
+		sessions.length ? h('table', { class: 'lr-table' },
+			h('thead', {}, h('tr', {}, h('th', {}, _t('Title')), h('th', {}, _t('Type')), h('th', {}, _t('Date')), h('th', {}, _t('Hours')))),
+			h('tbody', {}, ...sessions.map(s => h('tr', {},
+				h('td', {}, h('a', { href: '#/gruppen/' + s.id }, s.title)),
+				h('td', {}, TYPES.find(t => t.id === s.type_id)?.name || s.type_id),
+				h('td', {}, formatDate(s.attended_date)), h('td', {}, s.hours)))))
+			: emptyState(_t('No group training sessions.')));
+}
+
+async function sessionForm(v, ME, { api, coreApi }) {
+	if (!ME.caps['training.records.submitOther']) return;
+	const persons = await coreApi('/persons/options');
+	const type = h('select', {}, ...TYPES.filter(t => t.active).map(t => h('option', { value: t.id }, t.name)));
+	const title = h('input', { maxlength: 255 }), date = h('input', { type: 'date' });
+	const hours = h('input', { type: 'number', min: 0, max: 9999.99, step: '0.25', value: 0 });
+	const notes = h('textarea', { maxlength: 10000 });
+	const selected = new Map();
+	const rows = h('tbody', {});
+	let personId = null;
+	const picker = window.LeiterrundeUI.personPicker({ persons, value: null, onChange: id => { personId = id; } });
+	const add = h('button', { class: 'lr-btn secondary', onclick: () => {
+		const id = +personId;
+		if (!id || selected.has(id)) { toast(_t('Please select a new participant')); return; }
+		if (selected.size >= 100) { toast(_t('A session can have at most 100 participants')); return; }
+		const person = persons.find(p => p.id === id);
+		const file = h('input', { type: 'file', accept: '.pdf,.jpg,.jpeg,.png,.heic' });
+		const row = h('tr', {}, h('td', {}, person ? person.last_name + ', ' + person.first_name : '#' + id),
+			h('td', {}, file), h('td', {}, h('button', { class: 'lr-btn quiet', onclick: () => { selected.delete(id); row.remove(); } }, _t('Remove'))));
+		selected.set(id, file); rows.append(row);
+	} }, _t('Add participant'));
+	const save = h('button', { class: 'lr-btn', onclick: async () => {
+		if (!title.value.trim() || !date.value || !selected.size) { toast(_t('Enter a title, date and at least one participant')); return; }
+		for (const file of selected.values()) {
+			if (file.files[0]?.size > 20 * 1024 * 1024) { toast(_t('File is larger than 20 MB')); return; }
+		}
+		save.disabled = true;
+		let session;
+		try {
+			session = await api('/training-sessions', { method: 'POST', json: { type_id: +type.value,
+				attended_date: date.value, hours: +hours.value, title: title.value,
+				person_ids: [...selected.keys()], notes: notes.value || null } });
+		} catch (e) { toast(e.message); save.disabled = false; return; }
+		for (const record of session.records) {
+			const file = selected.get(record.person_id)?.files[0];
+			if (!file) continue;
+			const fd = new FormData(); fd.append('file', file);
+			try { await api('/training-records/' + record.id + '/file', { method: 'POST', body: fd }); }
+			catch (e) { toast(_t('Session created, but a certificate upload failed. Retry it on the session page.') + ' ' + e.message); }
+		}
+		location.hash = '#/gruppen/' + session.id;
+	} }, _t('Create group training'));
+	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('New group training') }),
+		h('div', { class: 'lr-form lr-formgrid' },
+			field(_t('Title'), title, 6), field(_t('Training type'), type, 6), field(_t('Date'), date, 4), field(_t('Hours'), hours, 4),
+			field(_t('Notes'), notes, 12), field(_t('Person'), picker, 8), formActions(add)),
+		h('p', {}, _t('Each participant gets an individual record and certificate. Certificates can also be uploaded later.')),
+		h('table', { class: 'lr-table' }, h('thead', {}, h('tr', {}, h('th', {}, _t('Person')), h('th', {}, _t('File')), h('th', {}, _t('Action')))), rows),
+		formActions(save, h('button', { class: 'lr-btn secondary', onclick: () => location.hash = '#/gruppen' }, _t('Cancel'))));
 }
 
 async function viewTypen(v, ME, { api }) {
@@ -235,8 +351,8 @@ async function viewMein(v, ME, { api }) {
 		h('table', { class: 'lr-table' },
 			h('thead', {}, h('tr', {}, h('th', {}, _t('Check')), h('th', {}, _t('Status')), h('th', {}, _t('Valid until')))),
 			h('tbody', {},
-				...st.types.map(t => h('tr', {}, h('td', {}, t.name), h('td', {}, badge(t.state)), h('td', {}, t.expires ? formatDate(t.expires) : '–'))),
-				h('tr', {}, h('td', {}, _t('Hours balance ({hours}/{required} h)', { hours: st.hours.hours, required: st.hours.required })), h('td', {}, badge(st.hours.state)), h('td', {}, '–')),
+				...st.types.map(t => h('tr', {}, h('td', {}, t.name, trainingDetails(t)), h('td', {}, badge(t.state)), h('td', {}, t.expires ? formatDate(t.expires) : '–'))),
+				h('tr', {}, h('td', {}, _t('Training hours'), trainingDetails(st.hours, true)), h('td', {}, badge(st.hours.state)), h('td', {}, st.hours.valid_until ? formatDate(st.hours.valid_until) : '–')),
 				h('tr', {}, h('td', {}, _t('Certificate of conduct')), h('td', {}, badge(st.fz.state)), h('td', {}, st.fz.expires ? formatDate(st.fz.expires) : '–')))),
 		h('h2', { class: 'lr-section' }, _t('Submit record')),
 		h('div', { class: 'lr-form lr-formgrid' },
@@ -261,6 +377,7 @@ mountApp({
 	routes: {
 		'#/uebersicht': viewUebersicht,
 		'#/nachweise': viewNachweise,
+		'#/gruppen': viewGruppen,
 		'#/fz': viewFz,
 		'#/schulungsarten': viewTypen,
 		'#/mein': viewMein,

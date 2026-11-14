@@ -69,11 +69,8 @@ class TrainingController extends ApiController {
 			}
 			$today = new \DateTimeImmutable('today');
 			$status = $this->statusService->personStatus($person, $today);
-			$fz = $this->statusService->fzStatus($person, $today);
-			$status['fz'] = $this->perm->has('fz.read') ? $fz
-				: ($this->perm->has('fz.expiry.read')
-					? ['state' => $fz['state'], 'expires' => $fz['expires']]
-					: ['state' => $fz['state']]);
+			$status['fz'] = $this->statusService->fzForViewer($person, $today, $own,
+				$this->perm->has('fz.read'), $this->perm->has('fz.expiry.read'));
 			return $status;
 		});
 	}
