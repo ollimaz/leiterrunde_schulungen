@@ -64,7 +64,7 @@ class Version1000Date20261105000000 extends SimpleMigrationStep {
 			$t->addColumn('issued_at', Types::DATE, ['notnull' => true]);
 			$t->addColumn('valid_months', Types::INTEGER, ['notnull' => true, 'default' => 36]);
 			$t->addColumn('notes', Types::TEXT, ['notnull' => false]);
-			$t->addColumn('created_by', Types::STRING, ['notnull' => false, 'length' => 64]);
+			$t->addColumn('created_by', Types::STRING, ['notnull' => true, 'length' => 64]);
 			$t->addColumn('created_at', Types::BIGINT, ['notnull' => true]);
 			$t->setPrimaryKey(['id']);
 			$t->addIndex(['person_id'], 'lr_fz_person_idx');
