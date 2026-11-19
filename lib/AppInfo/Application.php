@@ -11,10 +11,12 @@ namespace OCA\LeiterrundeSchulungen\AppInfo;
 
 use OCA\Leiterrunde\Module\RegisterModulesEvent;
 use OCA\LeiterrundeSchulungen\Listener\RegisterSchulungenModule;
+use OCP\App\IAppManager;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Server;
 
 class Application extends App implements IBootstrap {
 	public const APP_ID = 'leiterrunde_schulungen';
@@ -30,8 +32,12 @@ class Application extends App implements IBootstrap {
 			'OCA\Leiterrunde\Module\RegisterModulesEvent',
 			RegisterSchulungenModule::class
 		);
-		$context->registerDashboardWidget(\OCA\LeiterrundeSchulungen\Dashboard\SchulungsstandWidget::class);
-		$context->registerDashboardWidget(\OCA\LeiterrundeSchulungen\Dashboard\NachweiseWidget::class);
+		// Widgets brauchen Core-Klassen — bei deaktivierter Core-App würden
+		// sie fremde Seiten (z.B. das Dashboard) zum Fehler machen.
+		if (Server::get(IAppManager::class)->isEnabledForAnyone(self::CORE_APP_ID)) {
+			$context->registerDashboardWidget(\OCA\LeiterrundeSchulungen\Dashboard\SchulungsstandWidget::class);
+			$context->registerDashboardWidget(\OCA\LeiterrundeSchulungen\Dashboard\NachweiseWidget::class);
+		}
 	}
 
 	public function boot(IBootContext $context): void {

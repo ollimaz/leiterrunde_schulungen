@@ -141,7 +141,8 @@
         "Search people …": "Personen suchen …",
         "Search records …": "Nachweise suchen …",
         "Search sessions …": "Gruppenschulungen suchen …",
-        "Search types …": "Schulungsarten suchen …"
+        "Search types …": "Schulungsarten suchen …",
+        "The “Leiterrunde” app must be enabled.": "Die „Leiterrunde“-App muss aktiviert sein."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
