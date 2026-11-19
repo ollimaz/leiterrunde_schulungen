@@ -246,7 +246,7 @@ class TrainingRecordsController extends ApiController {
 			$file = $this->files->get($r->getFileOwner(), $r->getFileId());
 			$res = new StreamResponse($file->fopen('rb'));
 			$res->addHeader('Content-Type', $file->getMimeType());
-			$res->addHeader('Content-Disposition', "attachment; filename*=UTF-8''" . rawurlencode($r->getFileName() ?? 'nachweis'));
+			$res->addHeader('Content-Disposition', "inline; filename*=UTF-8''" . rawurlencode($r->getFileName() ?? 'nachweis'));
 			$res->addHeader('X-Content-Type-Options', 'nosniff');
 			return $res;
 		} catch (\OCA\Leiterrunde\Exception\ApiException $e) {

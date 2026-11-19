@@ -1,6 +1,5 @@
 {
     "translations": {
-        "To review": "Zu prüfen",
         "Valid training records": "Gültige Schulungsnachweise",
         "Group training": "Gruppenschulung",
         "New group training": "Neue Gruppenschulung",
@@ -137,7 +136,12 @@
         "Back": "Zurück",
         "Remove": "Entfernen",
         "File is larger than 20 MB": "Datei ist größer als 20 MB",
-        "Not found": "Nicht gefunden"
+        "Not found": "Nicht gefunden",
+        "Actions": "Aktionen",
+        "Search people …": "Personen suchen …",
+        "Search records …": "Nachweise suchen …",
+        "Search sessions …": "Gruppenschulungen suchen …",
+        "Search types …": "Schulungsarten suchen …"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

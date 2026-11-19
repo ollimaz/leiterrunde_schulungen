@@ -1,7 +1,7 @@
 /* SPDX-FileCopyrightText: 2026 Leiterrunde
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-const { mountApp, h, badge, toast, formatDate, put, lrPageHeader, field, checkField, formActions, emptyState } = window.LeiterrundeUI;
+const { mountApp, h, badge, toast, formatDate, put, lrPageHeader, field, checkField, formActions, emptyState, listView, persistForm, menuButton, BADGE_LABELS } = window.LeiterrundeUI;
 const { t: _t, n: _n } = window.LeiterrundeUI.l10n('leiterrunde_schulungen');
 
 const APP = 'leiterrunde_schulungen';
@@ -63,43 +63,40 @@ async function viewNachweise(v, ME, { api, coreApi }) {
 		|| (r.session_id && r.created_by === ME.uid && ME.caps['training.records.submitOther'])));
 	const anyMutate = records.some(canMutate);
 	const showActions = canApprove || anyMutate;
-	const filter = h('select', {}, h('option', { value: '' }, _t('All')), h('option', { value: 'pending' }, _t('To review')));
-	const tbody = h('tbody', {});
-	const empty = emptyState(_t('No training records.'));
-	const render = () => {
-		tbody.textContent = '';
-		const f = filter.value;
-		const shown = records.filter(r => !f || r.status === f);
-		empty.style.display = shown.length ? 'none' : '';
-		for (const r of shown) {
-			tbody.append(h('tr', {},
-				h('td', {}, name(r.person_id)),
-				h('td', {}, (TYPES.find(t => t.id === r.type_id) || {}).name || r.type_id),
-				h('td', {}, formatDate(r.attended_date)), h('td', {}, r.hours), h('td', {}, r.title || ''),
-				h('td', {}, badge(r.status)),
-				h('td', {}, r.file_id ? h('a', { href: OC.generateUrl('/apps/' + APP + '/api/training-records/' + r.id + '/file'), target: '_blank' }, r.file_name || _t('File')) : '–'),
-				showActions ? h('td', { class: 'lr-actions' },
-					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn', onclick: async () => { try { await api('/training-records/' + r.id + '/approve', { method: 'POST', json: {} }); toast(_t('Approved'), false); viewNachweise(v, ME, { api, coreApi }); } catch (e) { toast(e.message); } } }, _t('Approve')) : null,
-					canApprove && r.status === 'pending' ? h('button', { class: 'lr-btn quiet', onclick: async () => { try { await api('/training-records/' + r.id + '/reject', { method: 'POST', json: {} }); toast(_t('Rejected'), false); viewNachweise(v, ME, { api, coreApi }); } catch (e) { toast(e.message); } } }, _t('Reject')) : null,
-					canMutate(r) ? h('button', { class: 'lr-btn secondary', onclick: () => recordForm(v, ME, { api, coreApi }, r) }, _t('Edit')) : null,
-					canMutate(r) ? h('button', { class: 'lr-btn quiet', onclick: async () => {
-						if (!confirm(_t('Delete this record?'))) return;
-						try { await api('/training-records/' + r.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewNachweise(v, ME, { api, coreApi }); }
-						catch (e) { toast(e.message); }
-					} }, _t('Delete')) : null) : null));
-		}
-	};
-	filter.addEventListener('change', render);
-	render();
+	const lv = listView({
+		scope: 'nachweise',
+		search: { placeholder: _t('Search records …'), text: r => [name(r.person_id), r.title, (TYPES.find(t => t.id === r.type_id) || {}).name].filter(Boolean).join(' ') },
+		filters: [
+			{ key: 'status', label: _t('Status'), options: [{ value: '', label: _t('All') }, ...['pending', 'approved', 'rejected'].map(s => ({ value: s, label: BADGE_LABELS[s] || s }))],
+				apply: (r, val) => r.status === val },
+		],
+		sorts: [
+			{ key: 'date', label: _t('Date'), value: r => r.attended_date || '', dirs: [-1, 1] },
+			{ key: 'person', label: _t('Person'), value: r => name(r.person_id) },
+		],
+		headers: [_t('Person'), _t('Type'), _t('Date'), _t('hrs'), _t('Title'), _t('Status'), _t('File'), showActions ? _t('Action') : null].filter(Boolean),
+		row: (r) => h('tr', {},
+			h('td', {}, name(r.person_id)),
+			h('td', {}, (TYPES.find(t => t.id === r.type_id) || {}).name || r.type_id),
+			h('td', {}, formatDate(r.attended_date)), h('td', {}, r.hours), h('td', {}, r.title || ''),
+			h('td', {}, badge(r.status)),
+			h('td', {}, r.file_id ? h('a', { href: OC.generateUrl('/apps/' + APP + '/api/training-records/' + r.id + '/file'), target: '_blank' }, r.file_name || _t('File')) : '–'),
+			showActions ? h('td', { class: 'lr-actions' }, menuButton(_t('Actions'), [
+				canApprove && r.status === 'pending' ? { label: _t('Approve'), onclick: async () => { try { await api('/training-records/' + r.id + '/approve', { method: 'POST', json: {} }); toast(_t('Approved'), false); viewNachweise(v, ME, { api, coreApi }); } catch (e) { toast(e.message); } } } : null,
+				canApprove && r.status === 'pending' ? { label: _t('Reject'), onclick: async () => { try { await api('/training-records/' + r.id + '/reject', { method: 'POST', json: {} }); toast(_t('Rejected'), false); viewNachweise(v, ME, { api, coreApi }); } catch (e) { toast(e.message); } } } : null,
+				canMutate(r) ? { label: _t('Edit'), onclick: () => recordForm(v, ME, { api, coreApi }, r) } : null,
+				canMutate(r) ? { label: _t('Delete'), danger: true, onclick: async () => {
+					if (!confirm(_t('Delete this record?'))) return;
+					try { await api('/training-records/' + r.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewNachweise(v, ME, { api, coreApi }); }
+					catch (e) { toast(e.message); }
+				} } : null,
+			])) : null),
+		empty: _t('No training records.'),
+	});
+	lv.setRows(records);
 	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Training records'),
 			actions: [h('button', { class: 'lr-btn', onclick: () => location.hash = '#/mein' }, _t('Submit record'))] }),
-		h('div', { class: 'lr-search' }, filter),
-		h('table', { class: 'lr-table' },
-			h('thead', {}, h('tr', {},
-				h('th', {}, _t('Person')), h('th', {}, _t('Type')), h('th', {}, _t('Date')), h('th', {}, _t('hrs')),
-				h('th', {}, _t('Title')), h('th', {}, _t('Status')), h('th', {}, _t('File')), showActions ? h('th', {}, _t('Action')) : null)),
-			tbody),
-		empty);
+		lv.el);
 }
 
 function recordForm(v, ME, { api, coreApi }, r) {
@@ -175,15 +172,24 @@ async function viewGruppen(v, ME, ctx) {
 		return;
 	}
 	const sessions = await api('/training-sessions');
+	const lv = listView({
+		scope: 'gruppen',
+		search: { placeholder: _t('Search sessions …'), text: s => [s.title, TYPES.find(t => t.id === s.type_id)?.name].filter(Boolean).join(' ') },
+		sorts: [
+			{ key: 'date', label: _t('Date'), value: s => s.attended_date || '', dirs: [-1, 1] },
+			{ key: 'title', label: _t('Title'), value: s => s.title || '' },
+		],
+		headers: [_t('Title'), _t('Type'), _t('Date'), _t('Hours')],
+		row: (s) => h('tr', {},
+			h('td', {}, h('a', { href: '#/gruppen/' + s.id }, s.title)),
+			h('td', {}, TYPES.find(t => t.id === s.type_id)?.name || s.type_id),
+			h('td', {}, formatDate(s.attended_date)), h('td', {}, s.hours)),
+		empty: _t('No group training sessions.'),
+	});
+	lv.setRows(sessions);
 	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Group training'),
 		actions: ME.caps['training.records.submitOther'] ? [h('button', { class: 'lr-btn', onclick: () => location.hash = '#/gruppen/neu' }, _t('New group training'))] : [] }),
-		sessions.length ? h('table', { class: 'lr-table' },
-			h('thead', {}, h('tr', {}, h('th', {}, _t('Title')), h('th', {}, _t('Type')), h('th', {}, _t('Date')), h('th', {}, _t('Hours')))),
-			h('tbody', {}, ...sessions.map(s => h('tr', {},
-				h('td', {}, h('a', { href: '#/gruppen/' + s.id }, s.title)),
-				h('td', {}, TYPES.find(t => t.id === s.type_id)?.name || s.type_id),
-				h('td', {}, formatDate(s.attended_date)), h('td', {}, s.hours)))))
-			: emptyState(_t('No group training sessions.')));
+		lv.el);
 }
 
 async function sessionForm(v, ME, { api, coreApi }) {
@@ -268,21 +274,32 @@ async function viewTypen(v, ME, { api }) {
 					checkField(_t('Required for events'), re), checkField(_t('Active'), ac)),
 				formActions(save, cancel)));
 	};
+	const lv = listView({
+		scope: 'schulungsarten',
+		search: { placeholder: _t('Search types …'), text: t => t.name },
+		sorts: [
+			{ key: 'sort', label: _t('Sort order'), value: t => +t.sort },
+			{ key: 'name', label: _t('Name'), value: t => t.name || '' },
+		],
+		headers: [_t('Name'), _t('Validity'), _t('Hours'), _t('Required'), _t('Event-required'), _t('Status'), ''],
+		row: (t) => h('tr', {},
+			h('td', {}, t.name),
+			h('td', {}, t.validity_months === 0 ? _t('unlimited') : _n('%n month', '%n months', t.validity_months)),
+			h('td', {}, t.counts_hours ? _t('yes') : '–'), h('td', {}, t.required ? _t('yes') : '–'),
+			h('td', {}, t.required_for_event ? _t('yes') : '–'), h('td', {}, t.active ? _t('Active') : _t('Inactive')),
+			h('td', { class: 'lr-actions' }, canWrite ? menuButton(_t('Actions'), [
+				{ label: _t('Edit'), onclick: () => typeForm(t) },
+				{ label: _t('Delete'), danger: true, onclick: async () => {
+					if (!confirm(_t('Delete type "{name}"?', { name: t.name }))) return;
+					try { await api('/training-types/' + t.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewTypen(v, ME, { api }); }
+					catch (e) { toast(e.message); }
+				} },
+			]) : null)),
+	});
+	lv.setRows(TYPES);
 	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Training types'),
 			actions: canWrite ? [h('button', { class: 'lr-btn', onclick: () => typeForm(null) }, _t('New type'))] : [] }),
-		h('table', { class: 'lr-table' },
-			h('thead', {}, h('tr', {}, h('th', {}, _t('Name')), h('th', {}, _t('Validity')), h('th', {}, _t('Hours')), h('th', {}, _t('Required')), h('th', {}, _t('Event-required')), h('th', {}, _t('Status')), h('th', {}, ''))),
-			h('tbody', {}, ...TYPES.map(t => h('tr', {},
-				h('td', {}, t.name),
-				h('td', {}, t.validity_months === 0 ? _t('unlimited') : _n('%n month', '%n months', t.validity_months)),
-				h('td', {}, t.counts_hours ? _t('yes') : '–'), h('td', {}, t.required ? _t('yes') : '–'),
-				h('td', {}, t.required_for_event ? _t('yes') : '–'), h('td', {}, t.active ? _t('Active') : _t('Inactive')),
-				h('td', { class: 'lr-actions' }, canWrite ? h('button', { class: 'lr-btn secondary', onclick: () => typeForm(t) }, _t('Edit')) : null,
-					canWrite ? h('button', { class: 'lr-btn quiet', onclick: async () => {
-						if (!confirm(_t('Delete type "{name}"?', { name: t.name }))) return;
-						try { await api('/training-types/' + t.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewTypen(v, ME, { api }); }
-						catch (e) { toast(e.message); }
-					} }, _t('Delete')) : null))))));
+		lv.el);
 }
 
 async function viewFz(v, ME, { api, coreApi }) {
@@ -300,22 +317,32 @@ async function viewFz(v, ME, { api, coreApi }) {
 		try { await api('/fz', { method: 'POST', json: { person_id: +pid, issued_at: issued.value, valid_months: +valid.value } }); toast(_t('Saved'), false); viewFz(v, ME, { api, coreApi }); }
 		catch (e) { toast(e.message); }
 	} }, _t('Add'));
+	const lv = listView({
+		scope: 'fz',
+		search: { placeholder: _t('Search people …'), text: r => name(r.person_id) },
+		sorts: [
+			{ key: 'name', label: _t('Person'), value: r => name(r.person_id) },
+			{ key: 'issued', label: _t('Issued'), value: r => r.issued_at || '', dirs: [-1, 1] },
+		],
+		headers: [_t('Person'), _t('Issued'), _t('Validity'), _t('Notes'), canWrite ? '' : null].filter(Boolean),
+		row: (r) => h('tr', {},
+			h('td', {}, name(r.person_id)), h('td', {}, formatDate(r.issued_at)),
+			h('td', {}, _n('%n month', '%n months', r.valid_months)), h('td', {}, r.notes || ''),
+			canWrite ? h('td', { class: 'lr-actions' }, menuButton(_t('Actions'), [
+				{ label: _t('Edit'), onclick: () => fzForm(v, ME, { api, coreApi }, r) },
+				{ label: _t('Delete'), danger: true, onclick: async () => {
+					if (!confirm(_t('Delete certificate for {name}?', { name: name(r.person_id) }))) return;
+					try { await api('/fz/' + r.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewFz(v, ME, { api, coreApi }); }
+					catch (e) { toast(e.message); }
+				} },
+			])) : null),
+	});
+	lv.setRows(rows);
 	put(v, lrPageHeader({ kicker: _t('Leiterrunde · Training'), title: _t('Certificates of conduct') }),
 		canWrite ? h('div', { class: 'lr-form lr-formgrid' },
 			field(_t('Person'), pidEl, 6), field(_t('Issued on'), issued, 3), field(_t('Validity'), valid, 3),
 			formActions(add)) : null,
-		h('table', { class: 'lr-table' },
-			h('thead', {}, h('tr', {}, h('th', {}, _t('Person')), h('th', {}, _t('Issued')), h('th', {}, _t('Validity')), h('th', {}, _t('Notes')), canWrite ? h('th', {}, '') : null)),
-			h('tbody', {}, ...rows.map(r => h('tr', {},
-				h('td', {}, name(r.person_id)), h('td', {}, formatDate(r.issued_at)),
-				h('td', {}, _n('%n month', '%n months', r.valid_months)), h('td', {}, r.notes || ''),
-				canWrite ? h('td', { class: 'lr-actions' },
-					h('button', { class: 'lr-btn secondary', onclick: () => fzForm(v, ME, { api, coreApi }, r) }, _t('Edit')),
-					h('button', { class: 'lr-btn quiet', onclick: async () => {
-						if (!confirm(_t('Delete certificate for {name}?', { name: name(r.person_id) }))) return;
-						try { await api('/fz/' + r.id, { method: 'DELETE' }); toast(_t('Deleted'), false); viewFz(v, ME, { api, coreApi }); }
-						catch (e) { toast(e.message); }
-					} }, _t('Delete'))) : null)))));
+		lv.el);
 }
 
 function fzForm(v, ME, { api, coreApi }, r) {
@@ -355,19 +382,23 @@ async function viewMein(v, ME, { api }) {
 				h('tr', {}, h('td', {}, _t('Training hours'), trainingDetails(st.hours, true)), h('td', {}, badge(st.hours.state)), h('td', {}, st.hours.valid_until ? formatDate(st.hours.valid_until) : '–')),
 				h('tr', {}, h('td', {}, _t('Certificate of conduct')), h('td', {}, badge(st.fz.state)), h('td', {}, st.fz.expires ? formatDate(st.fz.expires) : '–')))),
 		h('h2', { class: 'lr-section' }, _t('Submit record')),
-		h('div', { class: 'lr-form lr-formgrid' },
-			field(_t('Training type'), typeSel, 4), field(_t('Date'), date, 3),
-			field(_t('Hours'), hours, 2), field(_t('Title'), titleI, 6),
-			field(_t('File (record)'), file, 6),
-			formActions(h('button', { class: 'lr-btn', onclick: async () => {
-				const fd = new FormData();
-				fd.append('person_id', p.id); fd.append('type_id', typeSel.value);
-				fd.append('attended_date', date.value); fd.append('hours', hours.value || 0);
-				fd.append('title', titleI.value);
-				if (file.files[0]) fd.append('file', file.files[0]);
-				try { await api('/training-records', { method: 'POST', body: fd }); toast(_t('Record submitted'), false); viewMein(v, ME, { api }); }
-				catch (e) { toast(e.message); }
-			} }, _t('Submit')))));
+		(() => {
+			const form = h('div', { class: 'lr-form lr-formgrid' },
+				field(_t('Training type'), typeSel, 4), field(_t('Date'), date, 3),
+				field(_t('Hours'), hours, 2), field(_t('Title'), titleI, 6),
+				field(_t('File (record)'), file, 6),
+				formActions(h('button', { class: 'lr-btn', onclick: async () => {
+					const fd = new FormData();
+					fd.append('person_id', p.id); fd.append('type_id', typeSel.value);
+					fd.append('attended_date', date.value); fd.append('hours', hours.value || 0);
+					fd.append('title', titleI.value);
+					if (file.files[0]) fd.append('file', file.files[0]);
+					try { await api('/training-records', { method: 'POST', body: fd }); draft.clear(); toast(_t('Record submitted'), false); viewMein(v, ME, { api }); }
+					catch (e) { toast(e.message); }
+				} }, _t('Submit'))));
+			const draft = persistForm(form, APP + '.record-new');
+			return form;
+		})());
 }
 
 mountApp({
