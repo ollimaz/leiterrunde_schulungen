@@ -10,7 +10,18 @@
 	<name lang="de">Schulungen</name>
 	<summary>Training records and certificates of conduct for the leader team</summary>
 	<summary lang="de">Schulungsnachweise und Führungszeugnisse für die Leiterrunde</summary>
-	<description><![CDATA[Training module of the Leiterrunde suite – requires the Leiterrunde app. Manage training records with certificate files, certificates of conduct (Führungszeugnisse) and training types with validity rules.]]></description>
+	<description><![CDATA[Training module of the Leiterrunde suite – requires the Leiterrunde app.
+
+Training and certificate management:
+
+• Training types with validity periods, hour credits and required flags
+• Training records per person with certificate file upload and approve/reject workflow
+• Group training sessions that create records for all attendees
+• Certificates of conduct (Führungszeugnisse) with issue date and validity tracking
+• Automatic status checks and expiry reminders via background job
+• Per-person training status overview used across the suite
+
+Requires the Leiterrunde app for persons, roles and permissions.]]></description>
 	<version>0.0.6</version>
 	<licence>agpl</licence>
 	<author>Leiterrunde</author>
