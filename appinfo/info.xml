@@ -22,7 +22,7 @@ Training and certificate management:
 • Per-person training status overview used across the suite
 
 Requires the Leiterrunde app for persons, roles and permissions.]]></description>
-	<version>0.0.6</version>
+	<version>0.0.7</version>
 	<licence>agpl</licence>
 	<author>Leiterrunde</author>
 	<namespace>LeiterrundeSchulungen</namespace>
